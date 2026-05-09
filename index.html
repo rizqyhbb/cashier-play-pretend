@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Cashier Play</title>
+  <title>Main Kasir</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#7C3AED">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Cashier Play">
+  <meta name="apple-mobile-web-app-title" content="Main Kasir">
   <link rel="apple-touch-icon" href="icon.svg">
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
 
@@ -276,18 +276,18 @@
 <!-- ═══ SCREEN 1: Entry ═══ -->
 <div id="screen-entry" class="screen">
 
-  <div class="app-title">🛍️ Cashier Play</div>
+  <div class="app-title">🛍️ Main Kasir</div>
 
   <div class="amount-box" id="amount-box">
     <div class="amount-label">Total</div>
-    <div class="amount-value" id="amount-val">$0.00</div>
+    <div class="amount-value" id="amount-val">Rp 0</div>
   </div>
 
-  <div class="section-label">Pay with 👇</div>
+  <div class="section-label">Bayar dengan 👇</div>
 
   <div class="methods">
     <button class="method-btn active" onclick="pickMethod('card',this)">
-      <span class="mi">💳</span>Card
+      <span class="mi">💳</span>Kartu
     </button>
     <button class="method-btn" onclick="pickMethod('bank',this)">
       <span class="mi">🏦</span>Bank
@@ -312,7 +312,7 @@
     <button class="num-btn btn-back" onclick="bk()">⌫</button>
   </div>
 
-  <button class="charge-btn" onclick="charge()">💰 CHARGE!</button>
+  <button class="charge-btn" onclick="charge()">💰 BAYAR!</button>
 
 </div>
 
@@ -320,8 +320,8 @@
 <div id="screen-waiting" class="screen hidden">
 
   <div class="w-emoji" id="w-emoji">💳</div>
-  <div class="w-title"  id="w-title">Tap your card!</div>
-  <div class="w-amount" id="w-amount">$0.00</div>
+  <div class="w-title"  id="w-title">Tempelkan kartumu!</div>
+  <div class="w-amount" id="w-amount">Rp 0</div>
 
   <div class="nfc-wrap">
     <div class="ring"></div>
@@ -330,13 +330,13 @@
     <div class="nfc-center">📡</div>
   </div>
 
-  <div class="w-hint" id="w-hint">Hold it right here! 👆</div>
+  <div class="w-hint" id="w-hint">Tempelkan di sini! 👆</div>
 
   <button class="fallback-btn" id="fallback-btn" onclick="simTap()">
-    🤚 No NFC? Tap here!
+    🤚 Tidak ada NFC? Tekan di sini!
   </button>
 
-  <button class="cancel-link" onclick="cancelPay()">← Cancel</button>
+  <button class="cancel-link" onclick="cancelPay()">← Batal</button>
 
 </div>
 
@@ -344,41 +344,41 @@
 <div id="screen-success" class="screen hidden">
 
   <div class="s-icon"   id="s-icon">✅</div>
-  <div class="s-title">Payment Approved!</div>
-  <div class="s-amount" id="s-amount">$0.00</div>
-  <div class="s-method" id="s-method">Paid with Card 💳</div>
-  <button class="new-sale-btn" onclick="newSale()">🛍️ New Sale!</button>
+  <div class="s-title">Pembayaran Berhasil!</div>
+  <div class="s-amount" id="s-amount">Rp 0</div>
+  <div class="s-method" id="s-method">Dibayar dengan Kartu 💳</div>
+  <button class="new-sale-btn" onclick="newSale()">🛍️ Transaksi Baru!</button>
 
 </div>
 
 <script>
 // ── State ──────────────────────────────────────────────────────
-let cents = '';       // digit string, represents cents (fill-from-right)
+let digits = '';      // digit string, represents full rupiah amount
 let method = 'card';
 let nfcAbort = null;
 
 const METHODS = {
-  card: { label: 'Card',     icon: '💳', hint: 'Hold your card right here! 👆' },
-  bank: { label: 'Bank',     icon: '🏦', hint: 'Hold your bank card here! 👆'  },
-  tap:  { label: 'Tap Pay',  icon: '📱', hint: 'Hold your phone right here! 👆' },
+  card: { label: 'Kartu',    icon: '💳', hint: 'Tempelkan kartumu di sini! 👆'  },
+  bank: { label: 'Bank',     icon: '🏦', hint: 'Tempelkan kartu bank di sini! 👆' },
+  tap:  { label: 'Tap Pay',  icon: '📱', hint: 'Tempelkan HP-mu di sini! 👆'     },
 };
 
 // ── Amount ─────────────────────────────────────────────────────
-function fmtCents(str) {
+function fmtIDR(str) {
   const n = parseInt(str || '0', 10);
-  return '$' + Math.floor(n / 100).toLocaleString() + '.' + String(n % 100).padStart(2, '0');
+  return 'Rp ' + n.toLocaleString('id-ID');
 }
 
 function dig(d) {
-  if (!cents && d === '0') return;   // no leading zero
-  if (cents.length >= 6) return;     // max $9999.99
-  cents += d;
+  if (!digits && d === '0') return;  // no leading zero
+  if (digits.length >= 9) return;    // max Rp 999.999.999
+  digits += d;
   render();
   beepDigit(d);
 }
-function bk()  { cents = cents.slice(0, -1); render(); beepBack(); }
-function clr() { cents = ''; render(); beepClr(); }
-function render() { document.getElementById('amount-val').textContent = fmtCents(cents); }
+function bk()  { digits = digits.slice(0, -1); render(); beepBack(); }
+function clr() { digits = ''; render(); beepClr(); }
+function render() { document.getElementById('amount-val').textContent = fmtIDR(digits); }
 
 // ── Payment method ─────────────────────────────────────────────
 function pickMethod(m, btn) {
@@ -395,19 +395,19 @@ function show(id) {
 
 // ── Charge ─────────────────────────────────────────────────────
 function charge() {
-  if (!cents || parseInt(cents, 10) === 0) {
+  if (!digits || parseInt(digits, 10) === 0) {
     const box = document.getElementById('amount-box');
     box.classList.remove('shake');
     void box.offsetWidth;
     box.classList.add('shake');
-    beep(150, 200);
+    tone(150, 200, 0.3);
     return;
   }
 
   const cfg = METHODS[method];
   document.getElementById('w-emoji').textContent  = cfg.icon;
-  document.getElementById('w-title').textContent  = 'Tap your ' + cfg.label + '!';
-  document.getElementById('w-amount').textContent = fmtCents(cents);
+  document.getElementById('w-title').textContent  = 'Tempelkan ' + cfg.label + '-mu!';
+  document.getElementById('w-amount').textContent = fmtIDR(digits);
   document.getElementById('w-hint').textContent   = cfg.hint;
   document.getElementById('fallback-btn').style.display = 'none';
 
@@ -459,8 +459,8 @@ function simTap() { scanSound(success); }
 function success() {
   stopNFC();
   const cfg = METHODS[method];
-  document.getElementById('s-amount').textContent = fmtCents(cents);
-  document.getElementById('s-method').textContent = 'Paid with ' + cfg.label + ' ' + cfg.icon;
+  document.getElementById('s-amount').textContent = fmtIDR(digits);
+  document.getElementById('s-method').textContent = 'Dibayar dengan ' + cfg.label + ' ' + cfg.icon;
 
   // Re-trigger pop animation
   const icon = document.getElementById('s-icon');
