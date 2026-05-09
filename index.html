@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Cashier Play</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7C3AED">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Cashier Play">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0; padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    :root {
+      --purple:  #7C3AED;
+      --purple2: #A78BFA;
+      --purple3: #EDE9FE;
+      --coral:   #F87171;
+      --yellow:  #FCD34D;
+      --green:   #10B981;
+      --green2:  #059669;
+      --dark:    #1E1B4B;
+      --gray:    #6B7280;
+      --bg:      #F5F0FF;
+    }
+
+    html, body {
+      height: 100%; height: 100dvh;
+      overflow: hidden;
+      font-family: 'Nunito', 'Trebuchet MS', sans-serif;
+      background: var(--bg);
+    }
+
+    /* ─── Screens ─── */
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      padding: 14px 14px max(14px, env(safe-area-inset-bottom)) 14px;
+      overflow: hidden;
+    }
+    .screen.hidden { display: none; }
+
+    /* ═══════════════════════════════════════
+       SCREEN 1 — Entry
+    ═══════════════════════════════════════ */
+    #screen-entry { gap: 10px; }
+
+    .app-title {
+      font-family: 'Fredoka One', 'Comic Sans MS', cursive;
+      font-size: 1.9rem;
+      color: var(--purple);
+      text-align: center;
+      line-height: 1;
+    }
+
+    /* Amount display */
+    .amount-box {
+      background: var(--dark);
+      border-radius: 20px;
+      padding: 14px 20px;
+      display: flex; flex-direction: column; align-items: flex-end;
+      box-shadow: 0 6px 24px rgba(30,27,75,.4);
+    }
+    .amount-label {
+      font-size: 0.7rem; font-weight: 800;
+      letter-spacing: 2.5px; text-transform: uppercase;
+      color: var(--purple2); margin-bottom: 2px;
+    }
+    .amount-value {
+      font-family: 'Fredoka One', cursive;
+      font-size: 3.2rem; color: var(--yellow); line-height: 1;
+    }
+
+    /* Payment methods */
+    .section-label {
+      font-size: 0.95rem; font-weight: 900;
+      color: var(--dark); text-align: center;
+    }
+    .methods {
+      display: flex; gap: 9px;
+    }
+    .method-btn {
+      flex: 1;
+      border: 3px solid #DDD6FE; border-radius: 16px;
+      background: white;
+      padding: 10px 6px;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.78rem; font-weight: 800; color: var(--gray);
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .method-btn .mi { font-size: 1.65rem; }
+    .method-btn.active {
+      border-color: var(--purple);
+      background: var(--purple3);
+      color: var(--purple);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(124,58,237,.28);
+    }
+
+    /* Numpad */
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      flex: 1;
+    }
+    .num-btn {
+      border: none; border-radius: 14px;
+      background: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.65rem; color: var(--dark);
+      box-shadow: 0 4px 0 #C4B5FD;
+      cursor: pointer;
+      transition: transform .08s, box-shadow .08s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .num-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #C4B5FD; }
+    .num-btn.btn-clr  { background: #FEF3C7; color: #D97706; font-size: 1.1rem; }
+    .num-btn.btn-back { background: #FEE2E2; color: var(--coral); }
+
+    /* Charge button */
+    .charge-btn {
+      border: none; border-radius: 20px;
+      background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.75rem; padding: 18px;
+      box-shadow: 0 6px 0 #6D28D9;
+      cursor: pointer;
+      transition: transform .08s, box-shadow .08s;
+      letter-spacing: .5px;
+    }
+    .charge-btn:active { transform: translateY(6px); box-shadow: 0 0 0 #6D28D9; }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-10px); }
+      40%      { transform: translateX(10px); }
+      60%      { transform: translateX(-6px); }
+      80%      { transform: translateX(6px); }
+    }
+    .shake { animation: shake .4s ease; }
+
+    /* ═══════════════════════════════════════
+       SCREEN 2 — Waiting / NFC
+    ═══════════════════════════════════════ */
+    #screen-waiting {
+      justify-content: center; align-items: center; text-align: center;
+      gap: 18px;
+      background: linear-gradient(160deg, #EDE9FE 0%, #FCE7F3 100%);
+    }
+
+    .w-emoji {
+      font-size: 3.2rem;
+      animation: bob 1.2s ease-in-out infinite;
+    }
+    @keyframes bob {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-14px); }
+    }
+
+    .w-title {
+      font-family: 'Fredoka One', cursive;
+      font-size: 2.1rem; color: var(--purple);
+    }
+    .w-amount {
+      font-family: 'Fredoka One', cursive;
+      font-size: 2.4rem; color: var(--dark);
+    }
+
+    /* Pulsing NFC rings */
+    .nfc-wrap {
+      position: relative; width: 170px; height: 170px;
+    }
+    .ring {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      border: 5px solid var(--purple);
+      animation: ring-out 2.1s ease-out infinite;
+    }
+    .ring:nth-child(2) { animation-delay: .7s; }
+    .ring:nth-child(3) { animation-delay: 1.4s; }
+    @keyframes ring-out {
+      0%   { transform: scale(.15); opacity: .9; }
+      100% { transform: scale(1);   opacity: 0; }
+    }
+    .nfc-center {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 4rem;
+    }
+
+    .w-hint {
+      font-size: 1.1rem; font-weight: 800; color: var(--gray); line-height: 1.5;
+    }
+
+    .fallback-btn {
+      border: 3px dashed var(--purple); border-radius: 16px;
+      background: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem; font-weight: 800; color: var(--purple);
+      padding: 14px 28px; cursor: pointer;
+      display: none;
+    }
+    .cancel-link {
+      border: none; background: none;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem; font-weight: 800; color: var(--gray);
+      padding: 8px 20px; cursor: pointer;
+    }
+
+    /* ═══════════════════════════════════════
+       SCREEN 3 — Success
+    ═══════════════════════════════════════ */
+    #screen-success {
+      justify-content: center; align-items: center; text-align: center;
+      gap: 14px;
+      background: linear-gradient(160deg, #D1FAE5 0%, #EDE9FE 100%);
+    }
+
+    .s-icon {
+      font-size: 7rem;
+      animation: pop .55s cubic-bezier(.175,.885,.32,1.275) both;
+    }
+    @keyframes pop {
+      0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0);      opacity: 1; }
+    }
+
+    .s-title {
+      font-family: 'Fredoka One', cursive;
+      font-size: 2.4rem; color: var(--green2);
+    }
+    .s-amount {
+      font-family: 'Fredoka One', cursive;
+      font-size: 3rem; color: var(--dark);
+    }
+    .s-method {
+      font-size: 1.1rem; font-weight: 800; color: var(--gray);
+    }
+    .new-sale-btn {
+      border: none; border-radius: 20px;
+      background: linear-gradient(135deg, #10B981 0%, #0D9488 100%);
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.7rem; padding: 18px 44px;
+      box-shadow: 0 6px 0 var(--green2);
+      margin-top: 10px; cursor: pointer;
+      transition: transform .08s, box-shadow .08s;
+    }
+    .new-sale-btn:active { transform: translateY(6px); box-shadow: 0 0 0 var(--green2); }
+
+    /* Confetti canvas */
+    #confetti {
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 999;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+
+<!-- ═══ SCREEN 1: Entry ═══ -->
+<div id="screen-entry" class="screen">
+
+  <div class="app-title">🛍️ Cashier Play</div>
+
+  <div class="amount-box" id="amount-box">
+    <div class="amount-label">Total</div>
+    <div class="amount-value" id="amount-val">$0.00</div>
+  </div>
+
+  <div class="section-label">Pay with 👇</div>
+
+  <div class="methods">
+    <button class="method-btn active" onclick="pickMethod('card',this)">
+      <span class="mi">💳</span>Card
+    </button>
+    <button class="method-btn" onclick="pickMethod('bank',this)">
+      <span class="mi">🏦</span>Bank
+    </button>
+    <button class="method-btn" onclick="pickMethod('tap',this)">
+      <span class="mi">📱</span>Tap Pay
+    </button>
+  </div>
+
+  <div class="numpad">
+    <button class="num-btn" onclick="dig('7')">7</button>
+    <button class="num-btn" onclick="dig('8')">8</button>
+    <button class="num-btn" onclick="dig('9')">9</button>
+    <button class="num-btn" onclick="dig('4')">4</button>
+    <button class="num-btn" onclick="dig('5')">5</button>
+    <button class="num-btn" onclick="dig('6')">6</button>
+    <button class="num-btn" onclick="dig('1')">1</button>
+    <button class="num-btn" onclick="dig('2')">2</button>
+    <button class="num-btn" onclick="dig('3')">3</button>
+    <button class="num-btn btn-clr"  onclick="clr()">CLR</button>
+    <button class="num-btn" onclick="dig('0')">0</button>
+    <button class="num-btn btn-back" onclick="bk()">⌫</button>
+  </div>
+
+  <button class="charge-btn" onclick="charge()">💰 CHARGE!</button>
+
+</div>
+
+<!-- ═══ SCREEN 2: Waiting ═══ -->
+<div id="screen-waiting" class="screen hidden">
+
+  <div class="w-emoji" id="w-emoji">💳</div>
+  <div class="w-title"  id="w-title">Tap your card!</div>
+  <div class="w-amount" id="w-amount">$0.00</div>
+
+  <div class="nfc-wrap">
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="nfc-center">📡</div>
+  </div>
+
+  <div class="w-hint" id="w-hint">Hold it right here! 👆</div>
+
+  <button class="fallback-btn" id="fallback-btn" onclick="simTap()">
+    🤚 No NFC? Tap here!
+  </button>
+
+  <button class="cancel-link" onclick="cancelPay()">← Cancel</button>
+
+</div>
+
+<!-- ═══ SCREEN 3: Success ═══ -->
+<div id="screen-success" class="screen hidden">
+
+  <div class="s-icon"   id="s-icon">✅</div>
+  <div class="s-title">Payment Approved!</div>
+  <div class="s-amount" id="s-amount">$0.00</div>
+  <div class="s-method" id="s-method">Paid with Card 💳</div>
+  <button class="new-sale-btn" onclick="newSale()">🛍️ New Sale!</button>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let cents = '';       // digit string, represents cents (fill-from-right)
+let method = 'card';
+let nfcAbort = null;
+
+const METHODS = {
+  card: { label: 'Card',     icon: '💳', hint: 'Hold your card right here! 👆' },
+  bank: { label: 'Bank',     icon: '🏦', hint: 'Hold your bank card here! 👆'  },
+  tap:  { label: 'Tap Pay',  icon: '📱', hint: 'Hold your phone right here! 👆' },
+};
+
+// ── Amount ─────────────────────────────────────────────────────
+function fmtCents(str) {
+  const n = parseInt(str || '0', 10);
+  return '$' + Math.floor(n / 100).toLocaleString() + '.' + String(n % 100).padStart(2, '0');
+}
+
+function dig(d) {
+  if (!cents && d === '0') return;   // no leading zero
+  if (cents.length >= 6) return;     // max $9999.99
+  cents += d;
+  render();
+  beepDigit(d);
+}
+function bk()  { cents = cents.slice(0, -1); render(); beepBack(); }
+function clr() { cents = ''; render(); beepClr(); }
+function render() { document.getElementById('amount-val').textContent = fmtCents(cents); }
+
+// ── Payment method ─────────────────────────────────────────────
+function pickMethod(m, btn) {
+  method = m;
+  document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Screen helper ──────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+// ── Charge ─────────────────────────────────────────────────────
+function charge() {
+  if (!cents || parseInt(cents, 10) === 0) {
+    const box = document.getElementById('amount-box');
+    box.classList.remove('shake');
+    void box.offsetWidth;
+    box.classList.add('shake');
+    beep(150, 200);
+    return;
+  }
+
+  const cfg = METHODS[method];
+  document.getElementById('w-emoji').textContent  = cfg.icon;
+  document.getElementById('w-title').textContent  = 'Tap your ' + cfg.label + '!';
+  document.getElementById('w-amount').textContent = fmtCents(cents);
+  document.getElementById('w-hint').textContent   = cfg.hint;
+  document.getElementById('fallback-btn').style.display = 'none';
+
+  show('screen-waiting');
+  startNFC();
+}
+
+function cancelPay() {
+  stopNFC();
+  show('screen-entry');
+}
+
+function newSale() {
+  show('screen-entry');
+}
+
+// ── NFC ────────────────────────────────────────────────────────
+async function startNFC() {
+  if (!('NDEFReader' in window)) {
+    document.getElementById('fallback-btn').style.display = 'block';
+    return;
+  }
+  try {
+    nfcAbort = new AbortController();
+    const reader = new NDEFReader();
+    await reader.scan({ signal: nfcAbort.signal });
+    reader.addEventListener('reading', () => {
+      stopNFC();
+      scanSound(success);
+    });
+    // Also show fallback in case user dismisses the permission prompt
+    reader.addEventListener('readingerror', () => {
+      document.getElementById('fallback-btn').style.display = 'block';
+    });
+  } catch(e) {
+    if (e.name !== 'AbortError') {
+      document.getElementById('fallback-btn').style.display = 'block';
+    }
+  }
+}
+
+function stopNFC() {
+  if (nfcAbort) { nfcAbort.abort(); nfcAbort = null; }
+}
+
+function simTap() { scanSound(success); }
+
+// ── Success ────────────────────────────────────────────────────
+function success() {
+  stopNFC();
+  const cfg = METHODS[method];
+  document.getElementById('s-amount').textContent = fmtCents(cents);
+  document.getElementById('s-method').textContent = 'Paid with ' + cfg.label + ' ' + cfg.icon;
+
+  // Re-trigger pop animation
+  const icon = document.getElementById('s-icon');
+  icon.style.animation = 'none';
+  void icon.offsetWidth;
+  icon.style.animation = 'pop .55s cubic-bezier(.175,.885,.32,1.275) both';
+
+  show('screen-success');
+  confetti();
+  successSound();
+  if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 260]);
+}
+
+// ── Audio ──────────────────────────────────────────────────────
+let ctx = null;
+function getCtx() {
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume(); // unlock on mobile after user gesture
+  return ctx;
+}
+
+function tone(freq, ms, vol = 0.25, type = 'sine', startAt = 0) {
+  try {
+    const c = getCtx(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.frequency.value = freq; o.type = type;
+    const t = c.currentTime + startAt;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + ms / 1000);
+    o.start(t); o.stop(t + ms / 1000 + 0.05);
+  } catch(e) {}
+}
+
+// Each digit maps to a pentatonic note — always sounds musical
+const NOTES = {'1':262,'2':294,'3':330,'4':392,'5':440,'6':523,'7':587,'8':659,'9':784,'0':220};
+
+function beepDigit(d) {
+  tone(NOTES[d] || 440, 110, 0.28);
+}
+
+function beepBack() {
+  tone(320, 70, 0.2);
+  tone(230, 80, 0.15, 'sine', 0.06);
+}
+
+function beepClr() {
+  [400, 300, 200].forEach((f, i) => tone(f, 80, 0.2, 'sine', i * 0.07));
+}
+
+// Two-tone beep like a real card scanner, then fires callback
+function scanSound(cb) {
+  tone(1200, 100, 0.35, 'square');
+  tone(1600, 130, 0.35, 'square', 0.13);
+  setTimeout(cb, 380);
+}
+
+// Playful 6-note fanfare
+function successSound() {
+  const melody = [
+    { f: 523, t: 0,    d: 0.18 },
+    { f: 659, t: 0.15, d: 0.18 },
+    { f: 784, t: 0.30, d: 0.18 },
+    { f: 523, t: 0.42, d: 0.10 },
+    { f: 784, t: 0.50, d: 0.10 },
+    { f:1047, t: 0.60, d: 0.50 },
+  ];
+  melody.forEach(({ f, t, d }) => tone(f, d * 1000, 0.28, 'sine', t));
+}
+
+// ── Confetti ───────────────────────────────────────────────────
+function confetti() {
+  const canvas = document.getElementById('confetti');
+  const c = canvas.getContext('2d');
+  canvas.width = innerWidth; canvas.height = innerHeight;
+
+  const COLORS = ['#7C3AED','#F87171','#FCD34D','#34D399','#60A5FA','#F472B6','#A3E635'];
+  const bits = Array.from({ length: 140 }, () => ({
+    x:    Math.random() * canvas.width,
+    y:    -20 - Math.random() * 220,
+    w:    6  + Math.random() * 11,
+    h:    4  + Math.random() * 6,
+    col:  COLORS[Math.floor(Math.random() * COLORS.length)],
+    vy:   3  + Math.random() * 5,
+    vx:   (Math.random() - 0.5) * 3,
+    rot:  Math.random() * 360,
+    rotV: (Math.random() - 0.5) * 9,
+    a:    1,
+  }));
+
+  let frame = 0;
+  (function loop() {
+    c.clearRect(0, 0, canvas.width, canvas.height);
+    frame++;
+    let alive = false;
+    for (const b of bits) {
+      b.y += b.vy; b.x += b.vx; b.rot += b.rotV;
+      if (frame > 85) b.a -= 0.016;
+      if (b.a > 0 && b.y < canvas.height + 20) {
+        alive = true;
+        c.save();
+        c.globalAlpha = Math.max(0, b.a);
+        c.translate(b.x, b.y);
+        c.rotate(b.rot * Math.PI / 180);
+        c.fillStyle = b.col;
+        c.fillRect(-b.w / 2, -b.h / 2, b.w, b.h);
+        c.restore();
+      }
+    }
+    if (alive) requestAnimationFrame(loop);
+    else c.clearRect(0, 0, canvas.width, canvas.height);
+  })();
+}
+
+// ── PWA ────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+
+</body>
+</html>
