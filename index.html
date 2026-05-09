@@ -130,6 +130,19 @@
     .num-btn.btn-clr  { background: #FEF3C7; color: #D97706; font-size: 1.1rem; }
     .num-btn.btn-back { background: #FEE2E2; color: var(--coral); }
 
+    /* Scan button */
+    .scan-btn {
+      border: 3px solid #F97316; border-radius: 16px;
+      background: #FFF7ED;
+      color: #EA580C;
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.2rem; padding: 12px;
+      cursor: pointer;
+      transition: all .15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .scan-btn:active { background: #FFEDD5; transform: scale(0.97); }
+
     /* Charge button */
     .charge-btn {
       border: none; border-radius: 20px;
@@ -267,6 +280,75 @@
       position: fixed; inset: 0;
       pointer-events: none; z-index: 999;
     }
+
+    /* ═══════════════════════════════════════
+       SCREEN 4 — Scanner
+    ═══════════════════════════════════════ */
+    #screen-scan {
+      padding: 0; background: #000; justify-content: center; align-items: center;
+    }
+
+    #scan-video {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+
+    .scan-overlay {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 28px;
+      width: 100%;
+    }
+
+    .scan-label {
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.6rem; color: white;
+      text-shadow: 0 2px 8px rgba(0,0,0,.8);
+    }
+
+    .scan-frame {
+      position: relative;
+      width: 260px; height: 260px;
+    }
+
+    /* 4 corner brackets */
+    .corner {
+      position: absolute; width: 36px; height: 36px;
+      border-color: white; border-style: solid;
+    }
+    .corner.tl { top: 0; left: 0;   border-width: 5px 0 0 5px; border-radius: 4px 0 0 0; }
+    .corner.tr { top: 0; right: 0;  border-width: 5px 5px 0 0; border-radius: 0 4px 0 0; }
+    .corner.bl { bottom: 0; left: 0;  border-width: 0 0 5px 5px; border-radius: 0 0 0 4px; }
+    .corner.br { bottom: 0; right: 0; border-width: 0 5px 5px 0; border-radius: 0 0 4px 0; }
+
+    /* Scan line */
+    .scan-line {
+      position: absolute; left: 4px; right: 4px; height: 3px;
+      background: linear-gradient(to right, transparent, #F97316, #FCD34D, #F97316, transparent);
+      border-radius: 2px;
+      box-shadow: 0 0 8px #F97316;
+      animation: scan-move 2s ease-in-out infinite;
+    }
+    @keyframes scan-move {
+      0%, 100% { top: 8px; }
+      50%       { top: calc(100% - 11px); }
+    }
+
+    .scan-hint {
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem; font-weight: 800;
+      color: rgba(255,255,255,.8);
+      text-align: center;
+    }
+
+    .scan-cancel-btn {
+      border: 2px solid rgba(255,255,255,.5); border-radius: 14px;
+      background: rgba(0,0,0,.4);
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem; font-weight: 800; color: white;
+      padding: 12px 32px; cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -282,6 +364,8 @@
     <div class="amount-label">Total</div>
     <div class="amount-value" id="amount-val">Rp 0</div>
   </div>
+
+  <button class="scan-btn" onclick="openScanner()">📷 Scan Barang</button>
 
   <div class="section-label">Bayar dengan 👇</div>
 
@@ -314,6 +398,23 @@
 
   <button class="charge-btn" onclick="charge()">💰 BAYAR!</button>
 
+</div>
+
+<!-- ═══ SCREEN 4: Scanner ═══ -->
+<div id="screen-scan" class="screen hidden">
+  <video id="scan-video" autoplay playsinline muted></video>
+  <div class="scan-overlay">
+    <div class="scan-label">📷 Scan Barang</div>
+    <div class="scan-frame">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="scan-hint">Arahkan kamera ke barcode... 🔍</div>
+    <button class="scan-cancel-btn" onclick="cancelScan()">← Batal</button>
+  </div>
 </div>
 
 <!-- ═══ SCREEN 2: Waiting ═══ -->
@@ -573,6 +674,73 @@ function confetti() {
     if (alive) requestAnimationFrame(loop);
     else c.clearRect(0, 0, canvas.width, canvas.height);
   })();
+}
+
+// ── Barcode Scanner ────────────────────────────────────────────
+let cameraStream = null;
+let scanning = false;
+let barcodeDetector = null;
+
+async function openScanner() {
+  if (!('BarcodeDetector' in window)) {
+    alert('Browser kamu belum mendukung scanner.\nGunakan Chrome terbaru di Android ya! 😊');
+    return;
+  }
+  show('screen-scan');
+  scanning = true;
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const video = document.getElementById('scan-video');
+    video.srcObject = cameraStream;
+    await video.play();
+
+    barcodeDetector = new BarcodeDetector({
+      formats: ['ean_13', 'ean_8', 'qr_code', 'code_128', 'upc_a', 'upc_e', 'itf', 'codabar', 'code_39']
+    });
+    requestAnimationFrame(detectLoop);
+  } catch(e) {
+    stopCamera();
+    show('screen-entry');
+  }
+}
+
+async function detectLoop() {
+  if (!scanning) return;
+  const video = document.getElementById('scan-video');
+  if (video.readyState < 2) { requestAnimationFrame(detectLoop); return; }
+  try {
+    const found = await barcodeDetector.detect(video);
+    if (found.length > 0) {
+      barcodeFound();
+    } else {
+      requestAnimationFrame(detectLoop);
+    }
+  } catch(e) {
+    requestAnimationFrame(detectLoop);
+  }
+}
+
+function barcodeFound() {
+  stopCamera();
+  // Random price Rp 500 – Rp 50.000 in steps of 500
+  const price = (Math.floor(Math.random() * 99) + 1) * 500;
+  digits = String(price);
+  render();
+  show('screen-entry');
+  barcodeBeep();
+}
+
+function stopCamera() {
+  scanning = false;
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+}
+
+function cancelScan() { stopCamera(); show('screen-entry'); }
+
+function barcodeBeep() {
+  tone(1900, 85, 0.45, 'square');
 }
 
 // ── PWA ────────────────────────────────────────────────────────

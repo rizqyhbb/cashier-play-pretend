@@ -1,4 +1,4 @@
-const CACHE = 'cashier-play-v1';
+const CACHE = 'cashier-play-v3';
 const STATIC = ['./', './index.html', './manifest.json', './icon.svg', './sw.js'];
 
 self.addEventListener('install', e => {
